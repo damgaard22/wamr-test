@@ -10,7 +10,7 @@
 
 #include "Enclave_t.h"
 #include "wasm_export.h"
-#include <bh_memory.h>
+#include "bh_platform.h"
 
 static char global_heap_buf[100 * 1024 * 1024] = { 0 };
 
@@ -42,21 +42,26 @@ ecall_iwasm_main()
     wasm_module_inst_t wasm_module_inst = NULL;
     wasm_exec_env_t exec_env;
     wasm_function_inst_t wasm_func_execute;
+    RuntimeInitArgs init_args;
     char error_buf[128];
     const char *exception;
     char *wasm_file_buf;
     size_t wasm_file_size;
 
-    if(bh_memory_init_with_pool(global_heap_buf,
-                                 sizeof(global_heap_buf)) != 0) {
-        ocall_print("Init global heap failed.\n");
+    os_set_print_function(enclave_print);
+
+    memset(&init_args, 0, sizeof(RuntimeInitArgs));
+
+    init_args.mem_alloc_type = Alloc_With_Pool;
+    init_args.mem_alloc_option.pool.heap_buf = global_heap_buf;
+    init_args.mem_alloc_option.pool.heap_size = sizeof(global_heap_buf);
+
+    /* initialize runtime environment */
+    if (!wasm_runtime_full_init(&init_args)) {
+        ocall_print("Init runtime environment failed.");
+        ocall_print("\n");
+        return;
     }
-
-
-    if (!wasm_runtime_init()) {
-        ocall_print("Could not init runtime");
-    }
-
 
     ocall_read_file("tensor.wasm", (unsigned char **) &wasm_file_buf, (size_t * ) & wasm_file_size);
 
