@@ -63,7 +63,7 @@ ecall_iwasm_main()
         return;
     }
 
-    ocall_read_file("biolib-tensor.wasm", (unsigned char **) &wasm_file_buf, (size_t * ) & wasm_file_size);
+    ocall_read_file("tensor.wasm", (unsigned char **) &wasm_file_buf, (size_t * ) & wasm_file_size);
 
     /* load WASM module */
     if (!(wasm_module = wasm_runtime_load((uint8_t *) wasm_file_buf, wasm_file_size,
@@ -128,7 +128,6 @@ ecall_iwasm_main()
     uint8_t *result = (uint8_t *) wasm_runtime_addr_app_to_native(wasm_module_inst, result_pointer);
 
     ocall_print((char *) result);
-
 
     /* destroy the module instance */
     wasm_runtime_deinstantiate(wasm_module_inst);
