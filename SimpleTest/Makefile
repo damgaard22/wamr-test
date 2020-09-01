@@ -90,7 +90,7 @@ Crypto_Library_Name := sgx_tcrypto
 
 WAMR_ROOT := $(CURDIR)/../wasm-micro-runtime
 
-Enclave_Cpp_Files := Enclave/Enclave.cpp Enclave/Enclave_test.cpp
+Enclave_Cpp_Files := Enclave/Enclave.cpp 
 
 Enclave_Include_Paths := -IEnclave -I$(WAMR_ROOT)/core/iwasm/include \
                          -I$(WAMR_ROOT)/core/shared/utils \

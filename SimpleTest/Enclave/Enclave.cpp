@@ -15,7 +15,7 @@
 static char global_heap_buf[100 * 1024 * 1024] = { 0 };
 
 static void
-set_error_buf(char *error_buf, uint32 error_buf_size, const char *string)
+set_error_buf(char *error_buf, uint32_t error_buf_size, const char *string)
 {
     if (error_buf != NULL)
         snprintf(error_buf, error_buf_size, "%s", string);
@@ -37,7 +37,7 @@ extern "C" {
 void
 ecall_iwasm_main()
 {
-    uint32_t stack_size = 16 * 1024, heap_size = 16 * 1024;
+    uint32_t stack_size = 16 * 1024 * 1024, heap_size = 16 * 1024 * 1024;
     wasm_module_t wasm_module = NULL;
     wasm_module_inst_t wasm_module_inst = NULL;
     wasm_exec_env_t exec_env;
