@@ -65,7 +65,7 @@ else
 endif
 
 App_Cpp_Flags := $(App_C_Flags) -std=c++11
-App_Link_Flags := $(SGX_COMMON_CFLAGS) libvmlib_untrusted.a -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -lpthread
+App_Link_Flags := $(SGX_COMMON_CFLAGS) -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -lpthread
 
 ifneq ($(SGX_MODE), HW)
 	App_Link_Flags += -lsgx_uae_service_sim
@@ -90,7 +90,7 @@ Crypto_Library_Name := sgx_tcrypto
 
 WAMR_ROOT := $(CURDIR)/../wasm-micro-runtime
 
-Enclave_Cpp_Files := Enclave/Enclave.cpp Enclave/Enclave_test.cpp
+Enclave_Cpp_Files := Enclave/Enclave.cpp 
 
 Enclave_Include_Paths := -IEnclave -I$(WAMR_ROOT)/core/iwasm/include \
                          -I$(WAMR_ROOT)/core/shared/utils \
@@ -166,11 +166,7 @@ App/%.o: App/%.cpp
 	@$(CXX) $(App_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
-libvmlib_untrusted.a: ../build/libvmlib_untrusted.a
-	@cp $< $@
-	@echo "CP $@  <=  $<"
-
-$(App_Name): App/Enclave_u.o $(App_Cpp_Objects) libvmlib_untrusted.a
+$(App_Name): App/Enclave_u.o $(App_Cpp_Objects)
 	@$(CXX) $^ -o $@ $(App_Link_Flags)
 	@echo "LINK =>  $@"
 
