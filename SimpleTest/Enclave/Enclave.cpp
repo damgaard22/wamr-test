@@ -12,7 +12,7 @@
 #include "wasm_export.h"
 #include <bh_memory.h>
 
-static char global_heap_buf[100 * 1024 * 1024] = { 0 };
+static char global_heap_buf[256 * 1024 * 1024] = { 0 };
 
 static void
 set_error_buf(char *error_buf, uint32_t error_buf_size, const char *string)
@@ -37,7 +37,7 @@ extern "C" {
 void
 ecall_iwasm_main()
 {
-    uint32_t stack_size = 16 * 1024 * 1024, heap_size = 16 * 1024 * 1024;
+    uint32_t stack_size = 64 * 1024 * 1024, heap_size = 64 * 1024 * 1024;
     wasm_module_t wasm_module = NULL;
     wasm_module_inst_t wasm_module_inst = NULL;
     wasm_exec_env_t exec_env;
@@ -58,7 +58,7 @@ ecall_iwasm_main()
     }
 
 
-    ocall_read_file("tensor.wasm", (unsigned char **) &wasm_file_buf, (size_t * ) & wasm_file_size);
+    ocall_read_file("tensor_new.wasm", (unsigned char **) &wasm_file_buf, (size_t * ) & wasm_file_size);
 
     /* load WASM module */
     if (!(wasm_module = wasm_runtime_load((uint8_t *) wasm_file_buf, wasm_file_size,
@@ -105,6 +105,8 @@ ecall_iwasm_main()
     argv[4] = data_size;
     
     wasm_runtime_call_wasm(exec_env, wasm_func_execute, 5, argv);
+
+    //wasm_application_execute_main(wasm_module_inst, 0, NULL);
 
     if ((exception = wasm_runtime_get_exception(wasm_module_inst))) {
         ocall_print(exception);
