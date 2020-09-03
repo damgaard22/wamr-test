@@ -1,5 +1,6 @@
 cd wasm-micro-runtime 
 git checkout main
+git pull
 cd ..
 
 rm -r build
