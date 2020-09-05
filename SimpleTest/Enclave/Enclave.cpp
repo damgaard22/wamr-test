@@ -12,7 +12,7 @@
 #include "wasm_export.h"
 #include "bh_platform.h"
 
-static char global_heap_buf[100 * 1024 * 1024] = { 0 };
+static char global_heap_buf[200 * 1024 * 1024] = { 0 };
 
 static void
 set_error_buf(char *error_buf, uint32_t error_buf_size, const char *string)
@@ -37,7 +37,7 @@ extern "C" {
 void
 ecall_iwasm_main()
 {
-    uint32_t stack_size = 16 * 1024 * 1024, heap_size = 16 * 1024 * 1024;
+    uint32_t stack_size = 15 * 1024 * 1024, heap_size = 64 * 1024 * 1024;
     wasm_module_t wasm_module = NULL;
     wasm_module_inst_t wasm_module_inst = NULL;
     wasm_exec_env_t exec_env;
@@ -86,28 +86,39 @@ ecall_iwasm_main()
         ocall_print("Could not create exec_env");
     }
 
-    wasm_func_execute = wasm_runtime_lookup_function(wasm_module_inst, "execute_onnx", NULL);
+    wasm_func_execute = wasm_runtime_lookup_function(wasm_module_inst, "execute_tensorflow", NULL);
 
-    char *code;
+    char *code, *code1;
     size_t code_size;
-    char *data;
+    char *data, *data1;
     size_t data_size;
 
-    ocall_read_file("onnx_test.code", (unsigned char **) &code, (size_t * ) & code_size);
-    ocall_read_file("onnx_test.data", (unsigned char **) &data, (size_t * ) & data_size);
+    ocall_read_file("tensorflow_test.code", (unsigned char **) &code, (size_t * ) & code_size);
+    ocall_read_file("tensorflow_test.data", (unsigned char **) &data, (size_t * ) & data_size);
 
     int32_t runtime_allocated_code;
     int32_t runtime_allocated_data;
 
-    runtime_allocated_code = wasm_runtime_module_dup_data(wasm_module_inst, code, code_size);
-    runtime_allocated_data = wasm_runtime_module_dup_data(wasm_module_inst, data, data_size);
+    runtime_allocated_code = wasm_runtime_module_malloc(wasm_module_inst, code_size + 8, (void**)&code1);
+    runtime_allocated_data = wasm_runtime_module_malloc(wasm_module_inst, data_size + 8, (void**)&data1);
+
+    memset(code1, 0, code_size+8);
+    memset(data1, 0, data_size+8);
+
+    memcpy(code1 + 8, code, code_size);
+    memcpy(data1 + 8, data, data_size);
+
+    os_printf("##code offset: %u, size: %u\n", runtime_allocated_code, code_size);
+    os_printf("##data offset: %u, size: %u\n", runtime_allocated_data, data_size);
 
     uint32_t argv[5];
-    argv[0] = 8; 
-    argv[1] = runtime_allocated_code;    // pass the buffer offset for the ONNX Model in WASM space.
+    argv[0] = wasm_runtime_module_malloc(wasm_module_inst, 8, NULL);
+    argv[1] = runtime_allocated_code + 8;    // pass the buffer offset for the ONNX Model in WASM space.
     argv[2] = code_size;
-    argv[3] = runtime_allocated_data;  // pass the buffer offset for the input data in WASM space.
+    argv[3] = runtime_allocated_data + 8;  // pass the buffer offset for the input data in WASM space.
     argv[4] = data_size;
+
+    os_printf("##arg offset: %u, size: %u\n", argv[0], 8);
     
     wasm_runtime_call_wasm(exec_env, wasm_func_execute, 5, argv);
 
@@ -125,9 +136,16 @@ ecall_iwasm_main()
                                                                     wasm_length_address);
     uint32_t result_pointer = *(uint32_t *) wasm_runtime_addr_app_to_native(wasm_module_inst,
                                                                             wasm_result_pointer_address);
-    uint8_t *result = (uint8_t *) wasm_runtime_addr_app_to_native(wasm_module_inst, result_pointer);
+    char *result = (char *)wasm_runtime_addr_app_to_native(wasm_module_inst, result_pointer);
 
-    ocall_print((char *) result);
+    ocall_print(result);
+    ocall_print("\n");
+
+    wasm_runtime_module_free(wasm_module_inst, wasm_return_pointer);
+    wasm_runtime_module_free(wasm_module_inst, runtime_allocated_code);
+    wasm_runtime_module_free(wasm_module_inst, runtime_allocated_data);
+
+    wasm_runtime_destroy_exec_env(exec_env);
 
     /* destroy the module instance */
     wasm_runtime_deinstantiate(wasm_module_inst);
