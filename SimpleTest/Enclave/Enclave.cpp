@@ -37,11 +37,11 @@ extern "C" {
 void
 ecall_iwasm_main()
 {
-    uint32_t stack_size = 15 * 1024 * 1024, heap_size = 64 * 1024 * 1024;
+    uint32_t stack_size = 15 * 1024 * 1024, heap_size = 16 * 1024;
     wasm_module_t wasm_module = NULL;
     wasm_module_inst_t wasm_module_inst = NULL;
     wasm_exec_env_t exec_env;
-    wasm_function_inst_t wasm_func_execute;
+    wasm_function_inst_t wasm_func_execute, wasm_func_malloc;
     RuntimeInitArgs init_args;
     char error_buf[128];
     const char *exception;
@@ -87,6 +87,7 @@ ecall_iwasm_main()
     }
 
     wasm_func_execute = wasm_runtime_lookup_function(wasm_module_inst, "execute_tensorflow", NULL);
+    wasm_func_malloc = wasm_runtime_lookup_function(wasm_module_inst, "__wbindgen_malloc", "(i)i");
 
     char *code, *code1;
     size_t code_size;
@@ -96,26 +97,54 @@ ecall_iwasm_main()
     ocall_read_file("tensorflow_test.code", (unsigned char **) &code, (size_t * ) & code_size);
     ocall_read_file("tensorflow_test.data", (unsigned char **) &data, (size_t * ) & data_size);
 
+    uint32_t argv[5];
     int32_t runtime_allocated_code;
     int32_t runtime_allocated_data;
+    int32_t runtime_allocated_ret_buf;
 
-    runtime_allocated_code = wasm_runtime_module_malloc(wasm_module_inst, code_size + 8, (void**)&code1);
-    runtime_allocated_data = wasm_runtime_module_malloc(wasm_module_inst, data_size + 8, (void**)&data1);
-
-    memset(code1, 0, code_size+8);
-    memset(data1, 0, data_size+8);
-
-    memcpy(code1 + 8, code, code_size);
-    memcpy(data1 + 8, data, data_size);
+    /* malloc space for code */
+    argv[0] = code_size;
+    wasm_runtime_call_wasm(exec_env, wasm_func_malloc, 1, argv);
+    if ((exception = wasm_runtime_get_exception(wasm_module_inst))) {
+        ocall_print(exception);
+        ocall_print("\n");
+    }
+    runtime_allocated_code = argv[0];
+    code1 = (char *)wasm_runtime_addr_app_to_native(wasm_module_inst, runtime_allocated_code);
+    
+    memset(code1, 0, code_size);
+    memcpy(code1, code, code_size);
 
     os_printf("##code offset: %u, size: %u\n", runtime_allocated_code, code_size);
+
+    /* malloc space for data */
+    argv[0] = data_size;
+    wasm_runtime_call_wasm(exec_env, wasm_func_malloc, 1, argv);
+    if ((exception = wasm_runtime_get_exception(wasm_module_inst))) {
+        ocall_print(exception);
+        ocall_print("\n");
+    }
+    runtime_allocated_data = argv[0];
+    data1 = (char *)wasm_runtime_addr_app_to_native(wasm_module_inst, runtime_allocated_data);
+
+    memset(data1, 0, data_size);
+    memcpy(data1, data, data_size);
+
     os_printf("##data offset: %u, size: %u\n", runtime_allocated_data, data_size);
 
-    uint32_t argv[5];
-    argv[0] = wasm_runtime_module_malloc(wasm_module_inst, 8, NULL);
-    argv[1] = runtime_allocated_code + 8;    // pass the buffer offset for the ONNX Model in WASM space.
+    /* malloc space for ret buf */
+    argv[0] =8;
+    wasm_runtime_call_wasm(exec_env, wasm_func_malloc, 1, argv);
+    if ((exception = wasm_runtime_get_exception(wasm_module_inst))) {
+        ocall_print(exception);
+        ocall_print("\n");
+    }
+    runtime_allocated_ret_buf = argv[0];
+
+    argv[0] = runtime_allocated_ret_buf;
+    argv[1] = runtime_allocated_code;    // pass the buffer offset for the ONNX Model in WASM space.
     argv[2] = code_size;
-    argv[3] = runtime_allocated_data + 8;  // pass the buffer offset for the input data in WASM space.
+    argv[3] = runtime_allocated_data;  // pass the buffer offset for the input data in WASM space.
     argv[4] = data_size;
 
     os_printf("##arg offset: %u, size: %u\n", argv[0], 8);
@@ -141,9 +170,11 @@ ecall_iwasm_main()
     ocall_print(result);
     ocall_print("\n");
 
-    wasm_runtime_module_free(wasm_module_inst, wasm_return_pointer);
-    wasm_runtime_module_free(wasm_module_inst, runtime_allocated_code);
-    wasm_runtime_module_free(wasm_module_inst, runtime_allocated_data);
+    /* Free these spaces in wasm application
+        wasm_runtime_module_free(wasm_module_inst, wasm_return_pointer);
+        wasm_runtime_module_free(wasm_module_inst, runtime_allocated_code);
+        wasm_runtime_module_free(wasm_module_inst, runtime_allocated_data);
+    */
 
     wasm_runtime_destroy_exec_env(exec_env);
 
