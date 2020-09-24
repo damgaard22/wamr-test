@@ -37,7 +37,7 @@ extern "C" {
 void
 ecall_iwasm_main()
 {
-    uint32_t stack_size = 15 * 1024 * 1024, heap_size = 16 * 1024;
+    uint32_t stack_size = 40 * 1024 * 1024, heap_size = 16 * 1024;
     wasm_module_t wasm_module = NULL;
     wasm_module_inst_t wasm_module_inst = NULL;
     wasm_exec_env_t exec_env;
@@ -86,7 +86,7 @@ ecall_iwasm_main()
         ocall_print("Could not create exec_env");
     }
 
-    wasm_func_execute = wasm_runtime_lookup_function(wasm_module_inst, "execute_onnx", NULL);
+    wasm_func_execute = wasm_runtime_lookup_function(wasm_module_inst, "execute_tensorflow", NULL);
     wasm_func_malloc = wasm_runtime_lookup_function(wasm_module_inst, "__wbindgen_malloc", "(i)i");
 
     char *code, *code1;
@@ -94,8 +94,8 @@ ecall_iwasm_main()
     char *data, *data1;
     size_t data_size;
 
-    ocall_read_file("mobilenetv2.onnx", (unsigned char **) &code, (size_t * ) & code_size);
-    ocall_read_file("data.test", (unsigned char **) &data, (size_t * ) & data_size);
+    ocall_read_file("inception.code", (unsigned char **) &code, (size_t * ) & code_size);
+    ocall_read_file("inception.data", (unsigned char **) &data, (size_t * ) & data_size);
 
     uint32_t argv[5];
     int32_t runtime_allocated_code;
