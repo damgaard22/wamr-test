@@ -63,7 +63,7 @@ ecall_iwasm_main()
         return;
     }
 
-    ocall_read_file("tensor_new.wasm", (unsigned char **) &wasm_file_buf, (size_t * ) & wasm_file_size);
+    ocall_read_file("tensor_debug.wasm", (unsigned char **) &wasm_file_buf, (size_t * ) & wasm_file_size);
 
     /* load WASM module */
     if (!(wasm_module = wasm_runtime_load((uint8_t *) wasm_file_buf, wasm_file_size,
